@@ -1,6 +1,5 @@
 import json
 import logging
-from functools import lru_cache
 from os import PathLike
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple, Union
@@ -85,7 +84,6 @@ class InferenceConfig(BaseSettings):
         json_config_path: Path
 
 
-@lru_cache(maxsize=2)
 def get_infer_config(
     is_v2:bool,
 ) -> InferenceConfig:
@@ -105,6 +103,7 @@ class ModelConfig(BaseSettings):
     scheduler: DiffusionScheduler = Field(DiffusionScheduler.k_dpmpp_2m)  # Scheduler to use
     steps: int = 25  # Number of inference steps to run
     guidance_scale: float = 7.5  # CFG scale to use
+    unet_batch_size: int = 1
     clip_skip: int = 1  # skip the last N-1 layers of the CLIP text encoder
     prompt_fixed_ratio: float = 0.5
     head_prompt: str = ""
@@ -112,9 +111,11 @@ class ModelConfig(BaseSettings):
     tail_prompt: str = ""
     n_prompt: list[str] = Field([])  # Anti-prompt(s) to use
     is_single_prompt_mode : bool = Field(False)
-    lora_map: Dict[str,float]= Field({})
+    lora_map: Dict[str,Any]= Field({})
     motion_lora_map: Dict[str,float]= Field({})
     ip_adapter_map: Dict[str,Any]= Field({})
+    img2img_map: Dict[str,Any]= Field({})
+    region_map: Dict[str,Any]= Field({})
     controlnet_map: Dict[str,Any]= Field({})
     upscale_config: Dict[str,Any]= Field({})
     stylize_config: Dict[str,Any]= Field({})
@@ -129,7 +130,6 @@ class ModelConfig(BaseSettings):
         return f"{self.name.lower()}-{self.path.stem.lower()}"
 
 
-@lru_cache(maxsize=2)
 def get_model_config(config_path: Path) -> ModelConfig:
     settings = ModelConfig(json_config_path=config_path)
     return settings

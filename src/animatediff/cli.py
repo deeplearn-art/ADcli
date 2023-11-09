@@ -13,10 +13,13 @@ from rich.logging import RichHandler
 
 from animatediff import __version__, console, get_dir
 from animatediff.generate import (controlnet_preprocess, create_pipeline,
-                                  create_us_pipeline, ip_adapter_preprocess,
-                                  load_controlnet_models, run_inference,
+                                  create_us_pipeline, img2img_preprocess,
+                                  ip_adapter_preprocess,
+                                  load_controlnet_models, prompt_preprocess,
+                                  region_preprocess, run_inference,
                                   run_upscale, save_output,
-                                  unload_controlnet_models)
+                                  unload_controlnet_models,
+                                  wild_card_conversion)
 from animatediff.pipelines import AnimationPipeline, load_text_embeddings
 from animatediff.settings import (CKPT_EXTENSIONS, InferenceConfig,
                                   ModelConfig, get_infer_config,
@@ -70,6 +73,19 @@ else:
 
 logger = logging.getLogger(__name__)
 
+
+from importlib.metadata import version as meta_version
+
+from packaging import version
+
+diffuser_ver = meta_version('diffusers')
+
+logger.info(f"{diffuser_ver=}")
+
+if version.parse(diffuser_ver) < version.parse('0.21.2'):
+    logger.error(f"The version of diffusers is out of date")
+    logger.error(f"python -m pip install diffusers==0.21.2")
+    raise ImportError("Please update diffusers to 0.21.2")
 
 try:
     from animatediff.rife import app as rife_app
@@ -178,7 +194,7 @@ def generate(
         typer.Option(
             "--overlap",
             "-O",
-            min=1,
+            min=0,
             max=12,
             help="Number of frames to overlap in context (default: context//4)",
             show_default=False,
@@ -314,7 +330,7 @@ def generate(
     logger.info(f"Will save outputs to ./{path_from_cwd(save_dir)}")
 
     controlnet_image_map, controlnet_type_map, controlnet_ref_map = controlnet_preprocess(model_config.controlnet_map, width, height, length, save_dir, device)
-    ip_adapter_map = ip_adapter_preprocess(model_config.ip_adapter_map, width, height, length, save_dir)
+    img2img_map = img2img_preprocess(model_config.img2img_map, width, height, length, save_dir)
 
     # beware the pipeline
     global g_pipeline
@@ -325,6 +341,7 @@ def generate(
             model_config=model_config,
             infer_config=infer_config,
             use_xformers=use_xformers,
+            video_length=length,
         )
         last_model_path = model_config.path.resolve()
     else:
@@ -352,16 +369,10 @@ def generate(
             model_config.seed[i] = get_random()
 
     # wildcard conversion
-    wild_card_dir = get_dir("wildcards")
-    for k in model_config.prompt_map.keys():
-        model_config.prompt_map[k] = replace_wild_card(model_config.prompt_map[k], wild_card_dir)
+    wild_card_conversion(model_config)
 
-    if model_config.head_prompt:
-        model_config.head_prompt = replace_wild_card(model_config.head_prompt, wild_card_dir)
-    if model_config.tail_prompt:
-        model_config.tail_prompt = replace_wild_card(model_config.tail_prompt, wild_card_dir)
-
-    model_config.prompt_fixed_ratio = max(min(1.0, model_config.prompt_fixed_ratio),0)
+    is_init_img_exist = img2img_map != None
+    region_condi_list, region_list, ip_adapter_config_map = region_preprocess(model_config, width, height, length, save_dir, is_init_img_exist)
 
     # save config to output directory
     logger.info("Saving prompt config to output directory")
@@ -391,35 +402,14 @@ def generate(
 
             logger.info(f"Generation seed: {seed}")
 
-            prompt_map = {}
-            for k in model_config.prompt_map.keys():
-                if int(k) < length:
-                    pr = model_config.prompt_map[k]
-                    if model_config.head_prompt:
-                        pr = model_config.head_prompt + "," + pr
-                    if model_config.tail_prompt:
-                        pr = pr + "," + model_config.tail_prompt
-
-                    prompt_map[int(k)]=pr
-
-            prompt_map = dict(sorted(prompt_map.items()))
-            key_list = list(prompt_map.keys())
-#            for k0,k1 in zip(key_list,key_list[1:]+key_list[0:1]):
-            for k0,k1 in zip(key_list,key_list[1:]+[length]):
-                k05 = k0 + round((k1-k0) * model_config.prompt_fixed_ratio)
-                if k05 == k1:
-                    k05 -= 1
-                if k05 != k0:
-                    prompt_map[k05] = prompt_map[k0]
-
 
             output = run_inference(
                 pipeline=g_pipeline,
-                prompt="this is dummy string",
                 n_prompt=n_prompt,
                 seed=seed,
                 steps=model_config.steps,
                 guidance_scale=model_config.guidance_scale,
+                unet_batch_size=model_config.unet_batch_size,
                 width=width,
                 height=height,
                 duration=length,
@@ -429,13 +419,15 @@ def generate(
                 context_overlap=overlap,
                 context_stride=stride,
                 clip_skip=model_config.clip_skip,
-                prompt_map=prompt_map,
                 controlnet_map=model_config.controlnet_map,
                 controlnet_image_map=controlnet_image_map,
                 controlnet_type_map=controlnet_type_map,
                 controlnet_ref_map=controlnet_ref_map,
                 no_frames=no_frames,
-                ip_adapter_map=ip_adapter_map,
+                img2img_map=img2img_map,
+                ip_adapter_config_map=ip_adapter_config_map,
+                region_list=region_list,
+                region_condi_list=region_condi_list,
                 output_map = model_config.output,
                 is_single_prompt_mode=model_config.is_single_prompt_mode
             )
