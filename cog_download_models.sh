@@ -7,6 +7,7 @@ pget https://civitai.com/api/download/models/72396 data/share/Stable-diffusion/l
 pget https://civitai.com/api/download/models/71009 data/share/Stable-diffusion/rcnzCartoon3d_v10.safetensors || true
 pget https://civitai.com/api/download/models/79068 data/share/Stable-diffusion/majicmixRealistic_v5Preview.safetensors || true
 pget https://civitai.com/api/download/models/29460 data/share/Stable-diffusion/realisticVisionV40_v20Novae.safetensors || true
+pget https://civitai.com/api/download/models/56071 data/share/Stable-diffusion/DarkSushiMixMix_colorful.safetensors || true
 
 # Download Motion_Module models
 wget -O data/models/motion-module/mm_sd_v14.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v14.ckpt || true

@@ -43,26 +43,20 @@ FAKE_PROMPT_TRAVEL_JSON = """
     "{negative_prompt}"
   ],
   "controlnet_map": {{
-    "input_image_dir": "controlnet_image/test",
+    "input_image_dir": "controlnet_image/xeno",
     "max_samples_on_vram": 200,
     "max_models_on_vram": 3,
     "save_detectmap": true,
     "preprocess_on_gpu": true,
     "is_loop": {loop},
-    "qr_code_monster_v2": {{
-      "enable": {enable_qr_code_monster_v2},
-      "use_preprocessor": {qr_code_monster_v2_preprocessor},
-      "guess_mode": {qr_code_monster_v2_guess_mode},
-      "controlnet_conditioning_scale": {controlnet_conditioning_scale},
-      "control_guidance_start": 0.0,
-      "control_guidance_end": 1.0,
-      "control_scale_list": [
-        0.5,
-        0.4,
-        0.3,
-        0.2,
-        0.1
-      ]
+    "controlnet_openpose": {
+        "enable": true,
+        "use_preprocessor": true,
+        "guess_mode": false,
+        "controlnet_conditioning_scale": {controlnet_conditioning_scale},
+        "control_guidance_start": 0.0,
+        "control_guidance_end": 1.0,
+        "control_scale_list": []
     }}
   }},
   "output":{{
@@ -180,44 +174,26 @@ class Predictor(BasePredictor):
             raise ValueError(f"No PNG folder found in directory: {directory}")
         return os.path.join(directory, png_folder)
 
+    def copy_dir_contents(self,src_dir,dest_dir):
+        if os.path.exists(dest_dir):  # Empty out the output directory
+            shutil.rmtree(dest_dir)
+        shutil.copytree(src_dir, dest_dir,dirs_exist_ok=True)
+
+
     def predict(
         self,
-        controlnet_video: CogPath = Input(
-            description="A short video/gif that will be used as the keyframes for QR Code Monster to use, Please note, all of the frames will be used as keyframes",
+        prompt: str = Input(
+            default=None
+        ),
+        base_video: CogPath = Input(
             default=None,
         ),
-        enable_qr_code_monster_v2: bool = Input(
-            description="Flag to enable QR Code Monster V2 ControlNet",
-            default=True,
-        ),
-        qr_code_monster_v2_preprocessor: bool = Input(
-            description="Flag to pre-process keyframes for QR Code Monster V2 ControlNet",
-            default=True,
-        ),
-        qr_code_monster_v2_guess_mode: bool = Input(
-            description="Flag to enable guess mode (un-guided) for QR Code Monster V2 ControlNet",
-            default=False,
-        ),
+
         controlnet_conditioning_scale: float = Input(
             description="Strength of ControlNet. The outputs of the ControlNet are multiplied by `controlnet_conditioning_scale` before they are added to the residual in the original UNet",
             default=0.18,
         ),
-        loop: bool = Input(
-            description="Flag to loop the video. Use when you have an 'infinitely' repeating video/gif ControlNet video",
-            default=True,
-        ),
-        head_prompt: str = Input(
-            description="Primary animation prompt. If a prompt map is provided, this will be prefixed at the start of every individual prompt in the map",
-            default="masterpiece, best quality, a haunting and detailed depiction of a ship at sea, battered by waves, ominous,((dark clouds:1.3)),distant lightning, rough seas, rain, silhouette of the ship against the stormy sky",
-        ),
-        prompt_map: str = Input(
-            description="Prompt for changes in animation. Provide 'frame number : prompt at this frame', separate different prompts with '|'. Make sure the frame number does not exceed the length of video (frames)",
-            default="0: ship steadily moving,((waves crashing against the ship:1.0)) | 32: (((lightning strikes))), distant thunder, ship rocked by waves | 64: ship silhouette,(((heavy rain))),wind howling, waves rising higher | 96: ship navigating through the storm, rain easing off",
-        ),
-        tail_prompt: str = Input(
-            description="Additional prompt that will be appended at the end of the main prompt or individual prompts in the map",
-            default="dark horizon, flashes of lightning illuminating the ship, sailors working hard, ship's lanterns flickering, eerie, mysterious, sails flapping loudly, stormy atmosphere",
-        ),
+
         negative_prompt: str = Input(
             default="(worst quality, low quality:1.4), black and white, b&w, sunny, clear skies, calm seas, beach, daytime, ((bright colors)), cartoonish, modern ships, sketchy, unfinished, modern buildings, trees, island",
         ),
@@ -241,13 +217,14 @@ class Predictor(BasePredictor):
         ),
         base_model: str = Input(
             description="Choose the base model for animation generation. If 'CUSTOM' is selected, provide a custom model URL in the next parameter",
-            default="majicmixRealistic_v5Preview",
+            default="DarkSushiMixMix_colorful",
             choices=[
                 "realisticVisionV40_v20Novae",
                 "lyriel_v16",
                 "majicmixRealistic_v5Preview",
                 "rcnzCartoon3d_v10",
                 "toonyou_beta3",
+                "DarkSushiMixMix_colorful"
                 "CUSTOM",
             ],
         ),
@@ -263,7 +240,7 @@ class Predictor(BasePredictor):
         ),
         scheduler: str = Input(
             description="Diffusion scheduler",
-            default="k_dpmpp_sde",
+            default="euler_a",
             choices=[
                 "ddim",
                 "pndm",
@@ -317,7 +294,7 @@ class Predictor(BasePredictor):
         playback_frames_per_second: int = Input(default=8, ge=1, le=60),
         film_interpolation: bool = Input(
             description="Whether to use FILM for between-frame interpolation (film-net.github.io)",
-            default=True,
+            default=False,
         ),
         num_interpolation_steps: int = Input(
             description="Number of steps to interpolate between animation frames",
@@ -334,13 +311,15 @@ class Predictor(BasePredictor):
         Animate Diff Prompt Walking CLI w/ QR Monster ControlNet
         NOTE: lora_map, motion_lora_map are NOT supported
         """
+
         if seed is None or seed < 0:
             seed = -1
 
-        if controlnet_video:
-            print("Using ControlNet")
-            path_to_controlnet_video = str(controlnet_video)
-            output_dir = "data/controlnet_image/test/qr_code_monster_v2"
+        if base_video:
+            input_img_dir = "data/controlnet_image/xeno"
+            print("Preparing base video")
+            path_to_controlnet_video = str(base_video)
+            output_dir = f"{input_img_dir}/img"
             if os.path.exists(output_dir):  # Empty out the output directory
                 shutil.rmtree(output_dir)
             os.makedirs(output_dir)
@@ -350,6 +329,10 @@ class Predictor(BasePredictor):
             subprocess.run(
                 ["ffmpeg", "-i", path_to_controlnet_video, "-vframes", str(frames), output_pattern], check=True
             )
+
+            #copy to controlnet subfolders
+            self.copy_dir_contents(output_dir,f"{input_img_dir}/controlnet_openpose")
+
 
         if height % 8 != 0 or width % 8 != 0:
             raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
@@ -364,18 +347,15 @@ class Predictor(BasePredictor):
             steps=steps,
             guidance_scale=guidance_scale,
             prompt_fixed_ratio=prompt_fixed_ratio,
-            head_prompt=head_prompt,
-            tail_prompt=tail_prompt,
+            head_prompt="",
+            tail_prompt="",
             negative_prompt=negative_prompt,
             playback_frames_per_second=playback_frames_per_second,
-            prompt_map=self.transform_prompt_map(prompt_map),
+            prompt_map=f"0:(prompt_map)",
             scheduler=scheduler,
             clip_skip=clip_skip,
-            enable_qr_code_monster_v2="true" if enable_qr_code_monster_v2 else "false",
-            qr_code_monster_v2_preprocessor="true" if qr_code_monster_v2_preprocessor else "false",
-            qr_code_monster_v2_guess_mode="true" if qr_code_monster_v2_guess_mode else "false",
             controlnet_conditioning_scale=controlnet_conditioning_scale,
-            loop="true" if loop else "false",
+            loop="false",
         )
 
         print(f"{'-'*80}")
