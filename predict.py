@@ -14,10 +14,6 @@ from cog import Path as CogPath
 import sys
 import gdown
 import torch
-import tensorflow as tf
-
-sys.path.append("/frame-interpolation")
-from eval import interpolator as film_interpolator, util as film_util
 
 
 FAKE_PROMPT_TRAVEL_JSON = """
@@ -73,25 +69,6 @@ FAKE_PROMPT_TRAVEL_JSON = """
 class Predictor(BasePredictor):
     def setup(self) -> None:
         """Load the model into memory to make running multiple predictions efficient"""
-
-        print("Loading interpolator...")
-        gpus = tf.config.experimental.list_physical_devices("GPU")
-        if gpus:
-            try:
-                # Currently, memory growth needs to be the same across GPUs
-                for gpu in gpus:
-                    tf.config.experimental.set_memory_growth(gpu, True)
-                logical_gpus = tf.config.experimental.list_logical_devices("GPU")
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-            except RuntimeError as e:
-                # Memory growth must be set before GPUs have been initialized
-                print(e)
-
-        self.interpolator = film_interpolator.Interpolator(
-            # from https://drive.google.com/drive/folders/1i9Go1YI2qiFWeT5QtywNFmYAA74bhXWj?usp=sharing
-            "/src/frame_interpolation_saved_model",
-            None,
-        )
 
     def download_custom_model(self, custom_base_model_url: str):
         # Validate the custom_base_model_url to ensure it's from "civitai.com"
@@ -224,7 +201,7 @@ class Predictor(BasePredictor):
                 "majicmixRealistic_v5Preview",
                 "rcnzCartoon3d_v10",
                 "toonyou_beta3",
-                "DarkSushiMixMix_colorful"
+                "DarkSushiMixMix_colorful",
                 "CUSTOM",
             ],
         ),
@@ -409,46 +386,15 @@ class Predictor(BasePredictor):
         print(f"Identified Media Path: {media_path}")
         print(f"Identified PNG Folder Path: {png_folder_path}")
 
-        # List of original frame filenames
-        original_frame_filenames = sorted(glob.glob(os.path.join(png_folder_path, "*.png")))
-
-        # Attempt to interpolate frames if required
-        interpolated_frames = None
-        if film_interpolation:
-            try:
-                print("Interpolating frames with FILM...")
-                # You need to create and provide an instance of the FILM interpolator here
-                # Use the interpolate_recursively_from_files function
-                interpolated_frames = film_util.interpolate_recursively_from_files(
-                    original_frame_filenames, num_interpolation_steps, self.interpolator
-                )
-                # Convert generator to list
-                interpolated_frames = list(interpolated_frames)
-            except Exception as e:
-                print(f"Interpolation failed with error: {e}")
-                print("Falling back to non-interpolated frames.")
-                interpolated_frames = None
-
-        # If no interpolation was done (either not required or it failed), read the images into memory
-        if interpolated_frames is None:
-            interpolated_frames = [film_util.read_image(filename) for filename in original_frame_filenames]
-
-        # Save frames to a new directory
-        interpolated_frames_dir = Path(recent_dir) / "interpolated_frames"
-        interpolated_frames_dir.mkdir(parents=True, exist_ok=True)
-        for i, frame in enumerate(interpolated_frames):
-            frame_filename = interpolated_frames_dir / f"{i:08d}.png"
-            film_util.write_image(str(frame_filename), frame)
-
         # Use the new directory with interpolated frames for the ffmpeg input
-        input_pattern = str(interpolated_frames_dir / "%08d.png")
+        input_pattern = str(png_folder_path / "%08d.png")
         output_video = str(Path(recent_dir) / "output_video.mp4")
         ffmpeg_command = [
             "ffmpeg",
             "-r",
             str(
                 playback_frames_per_second
-            ),  # You may need to adjust this if the interpolation changes the desired playback speed
+            ),
             "-i",
             input_pattern,
             "-vcodec",
