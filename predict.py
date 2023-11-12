@@ -45,7 +45,7 @@ FAKE_PROMPT_TRAVEL_JSON = """
     "save_detectmap": true,
     "preprocess_on_gpu": true,
     "is_loop": {loop},
-    "controlnet_openpose": {
+    "controlnet_openpose": {{
         "enable": true,
         "use_preprocessor": true,
         "guess_mode": false,
@@ -328,7 +328,7 @@ class Predictor(BasePredictor):
             tail_prompt="",
             negative_prompt=negative_prompt,
             playback_frames_per_second=playback_frames_per_second,
-            prompt_map=f"0:(prompt_map)",
+            prompt_map=f'"0":"{prompt}"',
             scheduler=scheduler,
             clip_skip=clip_skip,
             controlnet_conditioning_scale=controlnet_conditioning_scale,
