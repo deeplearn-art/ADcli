@@ -65,11 +65,5 @@ build:
     - pip install imageio[ffmpeg]
     - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.0.3/pget" && chmod +x /usr/local/bin/pget
 
-    # FILM requirements
-    - "git clone https://github.com/google-research/frame-interpolation.git /frame-interpolation"
-    # For some reason, "tensorflow==2.8.0" isn't installed in python_packages
-    # Reported at https://github.com/replicate/cog/issues/710
-    - "pip install tensorflow==2.8.0"
-
 # predict.py defines how predictions are run on your model
 predict: "predict.py:Predictor"
