@@ -39,6 +39,9 @@ FAKE_PROMPT_TRAVEL_JSON = """
   "n_prompt": [
     "{negative_prompt}"
   ],
+  "lora_map": {{
+    "share/lora/add_detail.safetensors": 1.0
+  }},
   "controlnet_map": {{
     "input_image_dir": "controlnet_image/xeno",
     "max_samples_on_vram": 200,
@@ -173,7 +176,7 @@ class Predictor(BasePredictor):
         ),
 
         negative_prompt: str = Input(
-            default="(worst quality, low quality:1.4), black and white, b&w, sunny, clear skies, calm seas, beach, daytime, ((bright colors)), cartoonish, modern ships, sketchy, unfinished, modern buildings, trees, island",
+            default="(worst quality, low quality:1.4)",
         ),
         frames: int = Input(
             description="Length of the video in frames (playback is at 8 fps e.g. 16 frames @ 8 fps is 2 seconds)",
@@ -266,20 +269,11 @@ class Predictor(BasePredictor):
         ),
         output_format: str = Input(
             description="Output format of the video. Can be 'mp4' or 'gif'",
-            default="mp4",
+            default="gif",
             choices=["mp4", "gif"],
         ),
         playback_frames_per_second: int = Input(default=8, ge=1, le=60),
-        film_interpolation: bool = Input(
-            description="Whether to use FILM for between-frame interpolation (film-net.github.io)",
-            default=False,
-        ),
-        num_interpolation_steps: int = Input(
-            description="Number of steps to interpolate between animation frames",
-            default=3,
-            ge=1,
-            le=50,
-        ),
+
         seed: int = Input(
             description="Seed for different images and reproducibility. Leave blank to randomise seed",
             default=None,

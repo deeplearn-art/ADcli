@@ -1,6 +1,7 @@
 #!/bin/bash
 
 mkdir -p data/share/Stable-diffusion/
+mkdir -p data/share/lora/
 
 #wget -c https://civitai.com/api/download/models/78775 -O data/share/Stable-diffusion/toonyou_beta3.safetensors || false
 #wget -c https://civitai.com/api/download/models/72396 -O data/share/Stable-diffusion/lyriel_v16.safetensors || false
@@ -9,6 +10,7 @@ mkdir -p data/share/Stable-diffusion/
 #wget -c https://civitai.com/api/download/models/29460 -O data/share/Stable-diffusion/realisticVisionV40_v20Novae.safetensors || false
 wget -c https://civitai.com/api/download/models/56071 -O data/share/Stable-diffusion/DarkSushiMixMix_colorful.safetensors || true
 wget -c https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors -P data/share/Stable-diffusion/
+wget -c https://huggingface.co/OedoSoldier/detail-tweaker-lora/resolve/main/add_detail.safetensors -P data/share/lora/
 
 # Download Motion_Module models
 #wget -O data/models/motion-module/mm_sd_v14.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v14.ckpt || false
