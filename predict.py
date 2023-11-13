@@ -21,6 +21,7 @@ FAKE_PROMPT_TRAVEL_JSON = """
   "name": "sample",
   "path": "{dreambooth_path}",
   "motion_module": "models/motion-module/mm_sd_v15_v2.safetensors",
+  "vae_path": "{vae_path}",
   "compile": false,
   "seed": [
     {seed}
@@ -320,6 +321,7 @@ class Predictor(BasePredictor):
 
         prompt_travel_json = FAKE_PROMPT_TRAVEL_JSON.format(
             dreambooth_path=f"share/Stable-diffusion/{base_model}.safetensors",
+            vae_path="share/Stable-diffusion/vae-ft-mse-840000-ema-pruned.safetensors",
             output_format=output_format,
             seed=seed,
             steps=steps,
