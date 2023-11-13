@@ -20,7 +20,7 @@ FAKE_PROMPT_TRAVEL_JSON = """
 {{
   "name": "sample",
   "path": "{dreambooth_path}",
-  "motion_module": "models/motion-module/mm_sd_v15_v2.ckpt",
+  "motion_module": "models/motion-module/mm_sd_v15_v2.safetensors",
   "compile": false,
   "seed": [
     {seed}
@@ -194,14 +194,14 @@ class Predictor(BasePredictor):
         ),
         base_model: str = Input(
             description="Choose the base model for animation generation. If 'CUSTOM' is selected, provide a custom model URL in the next parameter",
-            default="DarkSushiMixMix_colorful",
+            default="darkSushiMixMix_colorful",
             choices=[
                 "realisticVisionV40_v20Novae",
                 "lyriel_v16",
                 "majicmixRealistic_v5Preview",
                 "rcnzCartoon3d_v10",
                 "toonyou_beta3",
-                "DarkSushiMixMix_colorful",
+                "darkSushiMixMix_colorful",
                 "CUSTOM",
             ],
         ),
@@ -294,6 +294,7 @@ class Predictor(BasePredictor):
 
         if base_video:
             input_img_dir = "data/controlnet_image/xeno"
+            os.makedirs(input_img_dir,exist_ok=True)
             print("Preparing base video")
             path_to_controlnet_video = str(base_video)
             output_dir = f"{input_img_dir}/img"
@@ -386,28 +387,5 @@ class Predictor(BasePredictor):
         print(f"Identified Media Path: {media_path}")
         print(f"Identified PNG Folder Path: {png_folder_path}")
 
-        # Use the new directory with interpolated frames for the ffmpeg input
-        input_pattern = str(png_folder_path / "%08d.png")
-        output_video = str(Path(recent_dir) / "output_video.mp4")
-        ffmpeg_command = [
-            "ffmpeg",
-            "-r",
-            str(
-                playback_frames_per_second
-            ),
-            "-i",
-            input_pattern,
-            "-vcodec",
-            "libx264",
-            "-crf",
-            "1",  # High quality CRF value
-            "-pix_fmt",
-            "yuv420p",
-            output_video,
-        ]
+        return CogPath(media_path)
 
-        # Execute the ffmpeg command
-        subprocess.run(ffmpeg_command, check=True)
-
-        # Return the path to the new video
-        return CogPath(output_video)
