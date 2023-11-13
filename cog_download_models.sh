@@ -8,6 +8,7 @@ mkdir -p data/share/Stable-diffusion/
 #wget -c https://civitai.com/api/download/models/79068 -O data/share/Stable-diffusion/majicmixRealistic_v5Preview.safetensors || false
 #wget -c https://civitai.com/api/download/models/29460 -O data/share/Stable-diffusion/realisticVisionV40_v20Novae.safetensors || false
 wget -c https://civitai.com/api/download/models/56071 -O data/share/Stable-diffusion/DarkSushiMixMix_colorful.safetensors || true
+wget -c https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors -P data/share/Stable-diffusion/
 
 # Download Motion_Module models
 #wget -O data/models/motion-module/mm_sd_v14.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v14.ckpt || false
