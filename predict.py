@@ -61,7 +61,7 @@ FAKE_PROMPT_TRAVEL_JSON = """
   }},
   "output":{{
     "format" : "{output_format}",
-    "fps" : {playback_frames_per_second},
+    "fps" : {fps},
     "encode_param":{{
       "crf": 10
     }}
@@ -172,21 +172,21 @@ class Predictor(BasePredictor):
 
         controlnet_conditioning_scale: float = Input(
             description="Strength of ControlNet. The outputs of the ControlNet are multiplied by `controlnet_conditioning_scale` before they are added to the residual in the original UNet",
-            default=0.18,
+            default=1.0,
         ),
 
         negative_prompt: str = Input(
             default="(worst quality, low quality:1.4)",
         ),
         frames: int = Input(
-            description="Length of the video in frames (playback is at 8 fps e.g. 16 frames @ 8 fps is 2 seconds)",
+            description="Length of the video in frames ",
             default=128,
             ge=1,
             le=1024,
         ),
         width: int = Input(
             description="Width of generated video in pixels, must be divisable by 8",
-            default=256,
+            default=216,
             ge=64,
             le=2160,
         ),
@@ -272,7 +272,7 @@ class Predictor(BasePredictor):
             default="gif",
             choices=["mp4", "gif"],
         ),
-        playback_frames_per_second: int = Input(default=8, ge=1, le=60),
+        fps: int = Input(default=12, ge=1, le=60),
 
         seed: int = Input(
             description="Seed for different images and reproducibility. Leave blank to randomise seed",
@@ -291,18 +291,45 @@ class Predictor(BasePredictor):
             input_img_dir = "data/controlnet_image/xeno"
             os.makedirs(input_img_dir,exist_ok=True)
             print("Preparing base video")
-            path_to_controlnet_video = str(base_video)
             output_dir = f"{input_img_dir}/img"
             if os.path.exists(output_dir):  # Empty out the output directory
                 shutil.rmtree(output_dir)
             os.makedirs(output_dir)
-            output_pattern = os.path.join(output_dir, "%04d.png")
 
-            # Run the ffmpeg command to extract frames
-            subprocess.run(
-                ["ffmpeg", "-i", path_to_controlnet_video, "-vframes", str(frames), output_pattern], check=True
-            )
+            print("Preprocessing step 1")
+            # scale, alter fps, strip audio TODO: save audio + rejoin at the end
+            command1 = [
+                'ffmpeg',
+                '-hide_banner',
+                '-loglevel', 'error',
+                '-y',
+                '-i', str(base_video),
+                '-vf', f'fps={fps},scale={width}:{height}',
+                '-an',
+                '-f', 'ismv',
+                '-'
+            ]
 
+            print("Preprocessing step 2")
+            command2 = [
+                'ffmpeg',
+                '-hide_banner',
+                '-loglevel', 'error',
+                '-i', '-',  # Use input from the pipe
+                '-start_number', '0',
+                '-vsync', '0',
+                f'{output_dir}/%04d.png'
+            ]
+
+            # Run the first command and capture its output
+            process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
+
+            # Run the second command, using the output of the first as input
+            subprocess.run(command2, stdin=process1.stdout)
+
+            # Wait for the first process to finish
+            process1.wait()
+            print("Copying frames")
             #copy to controlnet subfolders
             self.copy_dir_contents(output_dir,f"{input_img_dir}/controlnet_openpose")
 
@@ -324,7 +351,7 @@ class Predictor(BasePredictor):
             head_prompt="",
             tail_prompt="",
             negative_prompt=negative_prompt,
-            playback_frames_per_second=playback_frames_per_second,
+            fps=fps,
             prompt_map=f'"0":"{prompt}"',
             scheduler=scheduler,
             clip_skip=clip_skip,
