@@ -386,13 +386,20 @@ class Predictor(BasePredictor):
             str(context),
         ]
         print(f"Running command: {' '.join(cmd)}")
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        (
-            stdout_output,
-            stderr_output,
-        ) = process.communicate()
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, universal_newlines=True)
 
-        print(stdout_output)
+        # Read stdout line by line
+        with process.stdout:
+            for line in iter(process.stdout.readline, ''):
+                print(line, end='')
+
+        # Wait for the process to finish and get stderr
+        stdout_output, stderr_output = process.communicate()
+
+        # Print remaining output
+        print(stdout_output, end='')
+
+        # Print stderr
         if stderr_output:
             print(f"Error: {stderr_output}")
 
