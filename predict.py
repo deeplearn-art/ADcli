@@ -4,6 +4,7 @@
 import glob
 import os
 from pathlib import Path
+#from random import randrange
 import re
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ from cog import BasePredictor, Input
 from cog import Path as CogPath
 
 import sys
-import gdown
+#import gdown
 import torch
 
 
@@ -160,7 +161,6 @@ class Predictor(BasePredictor):
             shutil.rmtree(dest_dir)
         shutil.copytree(src_dir, dest_dir,dirs_exist_ok=True)
 
-
     def predict(
         self,
         prompt: str = Input(
@@ -178,12 +178,8 @@ class Predictor(BasePredictor):
         negative_prompt: str = Input(
             default="(worst quality, low quality:1.4)",
         ),
-        frames: int = Input(
-            description="Length of the video in frames ",
-            default=128,
-            ge=1,
-            le=1024,
-        ),
+
+        duration : int = Input( default=2,ge=2,le=60),
         width: int = Input(
             description="Width of generated video in pixels, must be divisable by 8",
             default=216,
@@ -269,7 +265,7 @@ class Predictor(BasePredictor):
         ),
         output_format: str = Input(
             description="Output format of the video. Can be 'mp4' or 'gif'",
-            default="gif",
+            default="mp4",
             choices=["mp4", "gif"],
         ),
         fps: int = Input(default=12, ge=1, le=60),
@@ -284,6 +280,12 @@ class Predictor(BasePredictor):
         NOTE: lora_map, motion_lora_map are NOT supported
         """
 
+        output_dir = "output"
+        if os.path.exists(output_dir):  # Empty outputs
+            shutil.rmtree(output_dir)
+        os.makedirs(output_dir)
+
+        audio_file = None
         if seed is None or seed < 0:
             seed = -1
 
@@ -291,26 +293,39 @@ class Predictor(BasePredictor):
             input_img_dir = "data/controlnet_image/xeno"
             os.makedirs(input_img_dir,exist_ok=True)
             print("Preparing base video")
-            output_dir = f"{input_img_dir}/img"
-            if os.path.exists(output_dir):  # Empty out the output directory
-                shutil.rmtree(output_dir)
-            os.makedirs(output_dir)
+            controlnet_img_dir = f"{input_img_dir}/img"
+            if os.path.exists(controlnet_img_dir): # empty imgs dir
+                shutil.rmtree(controlnet_img_dir)
+            os.makedirs(controlnet_img_dir)
 
-            print("Preprocessing step 1")
-            # scale, alter fps, strip audio TODO: save audio + rejoin at the end
+            print("Preprocessing...")
+            # scale, alter fps, and if audio is there: strip and save it
+
+            result = subprocess.run( # Check if the input video has an audio stream
+                ["ffprobe", "-i", base_video, "-show_streams", "-select_streams", "a", "-loglevel", "error"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            has_audio_stream = bool(result.stdout)
             command1 = [
                 'ffmpeg',
-                '-hide_banner',
-                '-loglevel', 'error',
                 '-y',
                 '-i', str(base_video),
-                '-vf', f'fps={fps},scale={width}:{height}',
-                '-an',
+                '-vf', f'fps=12,scale={width}:{height}',
+            ]
+
+            if has_audio_stream:
+                audio_file = f"{output_dir}/audio.mp4"
+                command1 += ['-vn', '-c:a', 'copy', audio_file]
+
+            command1 += [
                 '-f', 'ismv',
                 '-'
             ]
 
-            print("Preprocessing step 2")
+            print(f"Save audio file to {audio_file}")
+            # break into init frames
             command2 = [
                 'ffmpeg',
                 '-hide_banner',
@@ -318,20 +333,19 @@ class Predictor(BasePredictor):
                 '-i', '-',  # Use input from the pipe
                 '-start_number', '0',
                 '-vsync', '0',
-                f'{output_dir}/%04d.png'
+                f'{controlnet_img_dir}/%08d.png'
             ]
 
             # Run the first command and capture its output
             process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
-
             # Run the second command, using the output of the first as input
             subprocess.run(command2, stdin=process1.stdout)
-
             # Wait for the first process to finish
             process1.wait()
-            print("Copying frames")
+
             #copy to controlnet subfolders
-            self.copy_dir_contents(output_dir,f"{input_img_dir}/controlnet_openpose")
+            print("Copying frames")
+            self.copy_dir_contents(controlnet_img_dir,f"{input_img_dir}/controlnet_openpose")
 
 
         if height % 8 != 0 or width % 8 != 0:
@@ -369,6 +383,7 @@ class Predictor(BasePredictor):
             os.makedirs(directory)
         with open(file_path, "w") as file:
             file.write(prompt_travel_json)
+        frames_n = duration * fps
 
         torch.cuda.empty_cache()
         cmd = [
@@ -381,32 +396,26 @@ class Predictor(BasePredictor):
             "-H",
             str(height),
             "-L",
-            str(frames),
+            str(frames_n),
             "-C",
             str(context),
         ]
         print(f"Running command: {' '.join(cmd)}")
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, universal_newlines=True)
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        (
+            stdout_output,
+            stderr_output,
+        ) = process.communicate()
 
-        # Read stdout line by line
-        with process.stdout:
-            for line in iter(process.stdout.readline, ''):
-                print(line, end='')
-
-        # Wait for the process to finish and get stderr
-        stdout_output, stderr_output = process.communicate()
-
-        # Print remaining output
-        print(stdout_output, end='')
-
-        # Print stderr
+        print(stdout_output)
         if stderr_output:
             print(f"Error: {stderr_output}")
 
         if process.returncode:
             raise ValueError(f"Command exited with code: {process.returncode}")
 
-        print("Identifying the GIF path from the generated outputs...")
+
+        print("Identifying the video path from the generated outputs...")
         output_base_path = "output"
         recent_dir = self.find_recent_directory(output_base_path)
         media_path = self.find_media_file(recent_dir, (".gif", ".mp4"))
@@ -416,6 +425,29 @@ class Predictor(BasePredictor):
         print(f"Identified directory: {recent_dir}")
         print(f"Identified Media Path: {media_path}")
         print(f"Identified PNG Folder Path: {png_folder_path}")
+
+        if audio_file:
+            media_path_with_audio = f'{media_path.split(".")[0]}_a.mp4'
+            # restore audio
+            print(f"Postprocessing, duration : {duration}")
+            command3 = [
+                "ffmpeg",
+                '-y',
+                "-i", audio_file,
+                "-i", media_path,
+                "-c:v", "copy",
+                "-c:v", "libx264",
+                "-preset", "slow",
+                "-crf", "20",
+                "-vf", "format=yuv420p",
+                "-c:a", "copy",
+                "-t", str(duration),
+                "-map", "1:v",
+                "-map", "0:a",
+                f'{media_path}_n.mp4'
+            ]
+            subprocess.run(command3)
+            return CogPath(media_path_with_audio)
 
         return CogPath(media_path)
 
