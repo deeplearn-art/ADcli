@@ -15,13 +15,13 @@ build:
 
   # a list of packages in the format <package-name>==<version>
   python_packages:
-    - "torch==2.0.1"
-    - "torchvision==0.15.2"
-    - "torchaudio==2.0.2"
+    - "torch >= 2.1.0, < 2.2.0"
+    - "torchvision"
+    - "torchaudio"
     - "accelerate>=0.20.3"
     - "colorama>=0.4.3,<0.5.0"
     - "cmake>=3.25.0"
-    - "diffusers==0.21.2"
+    - "diffusers==0.23.0"
     - "einops>=0.6.1"
     - "gdown>=4.6.6"
     - "ninja>=1.11.0"
@@ -33,10 +33,7 @@ build:
     - "safetensors>=0.3.1"
     - "sentencepiece>=0.1.99"
     - "shellingham>=1.5.0,<2.0.0"
-    - "torch>=2.0.0,<2.2.0"
-    - "torchaudio"
-    - "torchvision"
-    - "transformers>=4.30.2"
+    - "transformers >= 4.30.2, < 4.35.0"
     - "typer>=0.9.0,<1.0.0"
     - "controlnet_aux"
     - "matplotlib"
@@ -46,24 +43,20 @@ build:
     - "setuptools-scm>=7.0.0"
     - "pre-commit>=3.3.0"
     - "ipython"
-    - "xformers>=0.0.21"
+    - "xformers >= 0.0.22.post7"
     - "onnxruntime-gpu"
     - "pandas"
     - "segment-anything-hq==0.3"
     - "groundingdino-py==0.4.0"
     - "gitpython"
     - "mediapipe"
-    - "xformers"
-    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git"
-    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git#egg=animatediff[stylize]"
-    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git#egg=animatediff[dwpose]"
-    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git#egg=animatediff[stylize_mask]"
-
+    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git@5ad74e483cad336929de34665fc55f4070e6d7e7"
   run:
     - pip install --upgrade pip
     - apt-get update && apt-get install -y ffmpeg
     - pip install imageio[ffmpeg]
     - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.0.3/pget" && chmod +x /usr/local/bin/pget
+    - python3 -c  'from transformers import CLIPProcessor, CLIPModel; CLIPModel.from_pretrained("openai/clip-vit-large-patch14", local_files_only=False);CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14", local_files_only=False)'
 
 # predict.py defines how predictions are run on your model
 predict: "predict.py:Predictor"

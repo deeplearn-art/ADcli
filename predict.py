@@ -1,6 +1,8 @@
 # Prediction interface for Cog ⚙️
 # https://github.com/replicate/cog/blob/main/docs/python.md
 
+# Thank you neggle, s9roll7, zsxkib, most of the meat is in those forks
+
 import glob
 import os
 from pathlib import Path
@@ -17,10 +19,12 @@ import sys
 import torch
 
 
-FAKE_PROMPT_TRAVEL_JSON = """
+CONFIG_JSON = """
 {{
   "name": "sample",
   "path": "{dreambooth_path}",
+  "apply_lcm_lora": {lcm_lora},
+  "lcm_lora_scale": 1.0,
   "motion_module": "models/motion-module/mm_sd_v15_v2.safetensors",
   "vae_path": "{vae_path}",
   "compile": false,
@@ -167,11 +171,16 @@ class Predictor(BasePredictor):
             default=None
         ),
         base_video: CogPath = Input(
-            default=None,
+            default=None
         ),
-
+        lcm_lora: str = Input(
+            default="",
+             choices=[
+                "true",
+                "false"
+             ]
+        ),
         controlnet_conditioning_scale: float = Input(
-            description="Strength of ControlNet. The outputs of the ControlNet are multiplied by `controlnet_conditioning_scale` before they are added to the residual in the original UNet",
             default=1.0,
         ),
 
@@ -181,19 +190,16 @@ class Predictor(BasePredictor):
 
         duration : int = Input( default=2,ge=2,le=60),
         width: int = Input(
-            description="Width of generated video in pixels, must be divisable by 8",
             default=216,
             ge=64,
             le=2160,
         ),
         height: int = Input(
-            description="Height of generated video in pixels, must be divisable by 8",
             default=384,
             ge=64,
             le=2160,
         ),
         base_model: str = Input(
-            description="Choose the base model for animation generation. If 'CUSTOM' is selected, provide a custom model URL in the next parameter",
             default="darkSushiMixMix_colorful",
             choices=[
                 "realisticVisionV40_v20Novae",
@@ -206,17 +212,14 @@ class Predictor(BasePredictor):
             ],
         ),
         custom_base_model_url: str = Input(
-            description="Only used when base model is set to 'CUSTOM'. URL of the custom model to download if 'CUSTOM' is selected in the base model. Only downloads from 'https://civitai.com/api/download/models/' are allowed",
             default="",
         ),
         prompt_fixed_ratio: float = Input(
-            description="Defines the ratio of adherence to the fixed part of the prompt versus the dynamic part (from prompt map). Value should be between 0 (only dynamic) to 1 (only fixed).",
             default=0.5,
             ge=0,
             le=1,
         ),
         scheduler: str = Input(
-            description="Diffusion scheduler",
             default="euler_a",
             choices=[
                 "ddim",
@@ -240,7 +243,6 @@ class Predictor(BasePredictor):
             ],
         ),
         steps: int = Input(
-            description="Number of inference steps",
             ge=1,
             le=100,
             default=25,
@@ -252,26 +254,22 @@ class Predictor(BasePredictor):
             default=7.5,
         ),
         clip_skip: int = Input(
-            description="Skip the last N-1 layers of the CLIP text encoder (lower values follow prompt more closely)",
             default=2,
             ge=1,
             le=6,
         ),
         context: int = Input(
-            description="Number of frames to condition on (default: max of <length> or 32). max for motion module v1 is 24",
             default=16,
             ge=1,
             le=32,
         ),
         output_format: str = Input(
-            description="Output format of the video. Can be 'mp4' or 'gif'",
             default="mp4",
             choices=["mp4", "gif"],
         ),
         fps: int = Input(default=12, ge=1, le=60),
 
         seed: int = Input(
-            description="Seed for different images and reproducibility. Leave blank to randomise seed",
             default=None,
         ),
     ) -> CogPath:
@@ -288,6 +286,13 @@ class Predictor(BasePredictor):
         audio_file = None
         if seed is None or seed < 0:
             seed = -1
+
+        if height % 8 != 0:
+            height =  height + (8-height) % 8
+            print(f"height rounded to {height}")
+        if width % 8 != 0:
+            width =  width + (8-width) % 8
+            print(f"width rounded to {width}")
 
         if base_video:
             input_img_dir = "data/controlnet_image/xeno"
@@ -347,14 +352,11 @@ class Predictor(BasePredictor):
             print("Copying frames")
             self.copy_dir_contents(controlnet_img_dir,f"{input_img_dir}/controlnet_openpose")
 
-
-        if height % 8 != 0 or width % 8 != 0:
-            raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
-
         if base_model.upper() == "CUSTOM":
             base_model = self.download_custom_model(custom_base_model_url)
 
-        prompt_travel_json = FAKE_PROMPT_TRAVEL_JSON.format(
+        prompt_travel_json = CONFIG_JSON.format(
+            lcm_lora=lcm_lora,
             dreambooth_path=f"share/Stable-diffusion/{base_model}.safetensors",
             vae_path="share/Stable-diffusion/vae-ft-mse-840000-ema-pruned.safetensors",
             output_format=output_format,
@@ -444,7 +446,7 @@ class Predictor(BasePredictor):
                 "-t", str(duration),
                 "-map", "1:v",
                 "-map", "0:a",
-                f'{media_path}_n.mp4'
+                f'{media_path_with_audio}'
             ]
             subprocess.run(command3)
             return CogPath(media_path_with_audio)
