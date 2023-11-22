@@ -174,7 +174,7 @@ class Predictor(BasePredictor):
             default=None
         ),
         lcm_lora: str = Input(
-            default="",
+            default="false",
              choices=[
                 "true",
                 "false"
