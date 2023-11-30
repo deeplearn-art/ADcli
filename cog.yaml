@@ -45,19 +45,17 @@ build:
     - "pre-commit>=3.3.0"
     - "ipython"
     - "xformers >= 0.0.22.post7"
-    - "onnxruntime-gpu"
     - "pandas"
     - "segment-anything-hq==0.3"
     - "groundingdino-py==0.4.0"
     - "gitpython"
     - "mediapipe"
-    - "git+https://github.com/s9roll7/animatediff-cli-prompt-travel.git@5ad74e483cad336929de34665fc55f4070e6d7e7"
+    - "git+https://github.com/deeplearn-art/animatediff-cli-prompt-travel.git@7aa83364f47a67d660e64a25d83c2204b6fda735"
   run:
     - pip install --upgrade pip
     - apt-get update && apt-get install -y ffmpeg
     - pip install imageio[ffmpeg]
     - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.0.3/pget" && chmod +x /usr/local/bin/pget
-    - python3 -c  'from transformers import CLIPProcessor, CLIPModel; CLIPModel.from_pretrained("openai/clip-vit-large-patch14", local_files_only=False);CLIPProcessor.from_pretrained("openai/clip-vit-large-patch14", local_files_only=False)'
 
 # predict.py defines how predictions are run on your model
 predict: "predict.py:Predictor"

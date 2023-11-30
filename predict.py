@@ -328,7 +328,7 @@ class Predictor(BasePredictor):
                 '-f', 'ismv',
                 '-'
             ]
-
+            scale_factor = 0.75
             print(f"Save audio file to {audio_file}")
             # break into init frames
             command2 = [
@@ -338,6 +338,7 @@ class Predictor(BasePredictor):
                 '-i', '-',  # Use input from the pipe
                 '-start_number', '0',
                 '-vsync', '0',
+                '-vf', f'scale=iw*{scale_factor}:ih*{scale_factor}',
                 f'{controlnet_img_dir}/%08d.png'
             ]
 
