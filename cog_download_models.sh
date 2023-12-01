@@ -8,7 +8,7 @@ mkdir -p data/share/lora/
 #wget -c https://civitai.com/api/download/models/71009 -O data/share/Stable-diffusion/rcnzCartoon3d_v10.safetensors || false
 #wget -c https://civitai.com/api/download/models/79068 -O data/share/Stable-diffusion/majicmixRealistic_v5Preview.safetensors || false
 #wget -c https://civitai.com/api/download/models/29460 -O data/share/Stable-diffusion/realisticVisionV40_v20Novae.safetensors || false
-wget -c https://civitai.com/api/download/models/56071 -O data/share/Stable-diffusion/DarkSushiMixMix_colorful.safetensors || true
+wget -c https://civitai.com/api/download/models/56071 -O data/share/Stable-diffusion/darkSushiMixMix_colorful.safetensors
 wget -c https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors -P data/share/Stable-diffusion/
 wget -c https://huggingface.co/OedoSoldier/detail-tweaker-lora/resolve/main/add_detail.safetensors -P data/share/lora/
 
