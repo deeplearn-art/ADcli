@@ -15,4 +15,4 @@ wget -c https://huggingface.co/OedoSoldier/detail-tweaker-lora/resolve/main/add_
 # Download Motion_Module models
 #wget -O data/models/motion-module/mm_sd_v14.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v14.ckpt || false
 #wget -O data/models/motion-module/mm_sd_v15.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15.ckpt || false
-wget -O data/models/motion-module/mm_sd_v15_v2.ckpt https://huggingface.co/guoyww/animatediff/resolve/main/mm_sd_v15_v2.ckpt || true
+wget -O data/models/motion-module/mm_sd_v15_v2.safetensors https://huggingface.co/guoyww/animatediff/resolve/refs%2Fpr%2F3/mm_sd_v15_v2.safetensors?download=true
