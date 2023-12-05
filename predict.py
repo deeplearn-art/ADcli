@@ -1,7 +1,6 @@
 # Prediction interface for Cog ⚙️
 # https://github.com/replicate/cog/blob/main/docs/python.md
 
-# Thank you neggle, s9roll7, zsxkib, most of the meat is in those forks
 
 import glob
 import os
@@ -45,7 +44,7 @@ CONFIG_JSON = """
     "{negative_prompt}"
   ],
   "lora_map": {{
-    "share/lora/add_detail.safetensors": 1.0
+    "share/lora/add_detail.safetensors": {detail}
   }},
   "controlnet_map": {{
     "input_image_dir": "controlnet_image/xeno",
@@ -165,6 +164,19 @@ class Predictor(BasePredictor):
             shutil.rmtree(dest_dir)
         shutil.copytree(src_dir, dest_dir,dirs_exist_ok=True)
 
+    def leave_every_nth_png(self,n, dir):
+        for filename in os.listdir(dir):
+            file_path = os.path.join(dir, filename)
+            if filename.endswith(".png") and filename.startswith("0"):
+                file_base, file_ext = os.path.splitext(filename)
+                file_number = int(file_base)
+                try:
+                    if file_number % n != 0:
+                        os.remove(file_path)
+                        print(f"Dropped: {file_path}")
+                except ValueError:
+                    print(f"Invalid file format: {file_path}")
+
     def predict(
         self,
         prompt: str = Input(
@@ -272,10 +284,16 @@ class Predictor(BasePredictor):
         seed: int = Input(
             default=None,
         ),
+        detail: float = Input(
+            default=1.0,
+            ge=0,
+            le=1,
+        ),
+        loose: int = Input(default=1)
     ) -> CogPath:
         """
-        Animate Diff Prompt Walking CLI w/ QR Monster ControlNet
-        NOTE: lora_map, motion_lora_map are NOT supported
+        Animate Diff Prompt Walking CLI w/ ControlNet (openpose)
+        # builds upon the work of neggle, s9roll7, zsxkib
         """
 
         output_dir = "output"
@@ -303,52 +321,52 @@ class Predictor(BasePredictor):
                 shutil.rmtree(controlnet_img_dir)
             os.makedirs(controlnet_img_dir)
 
-            print("Preprocessing...")
-            # scale, alter fps, and if audio is there: strip and save it
-
+            print("Preprocessing ")
             result = subprocess.run( # Check if the input video has an audio stream
                 ["ffprobe", "-i", base_video, "-show_streams", "-select_streams", "a", "-loglevel", "error"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
+
             has_audio_stream = bool(result.stdout)
+
+            if has_audio_stream:
+                print("Extracting audio")
+                command = ['ffmpeg', '-i', str(base_video), '-vn', '-c:a', 'copy', 'audio.mp4',]
+                subprocess.run(command)
+
             command1 = [
                 'ffmpeg',
                 '-y',
                 '-i', str(base_video),
-                '-vf', f'fps=12,scale={width}:{height}',
-            ]
-
-            if has_audio_stream:
-                audio_file = f"{output_dir}/audio.mp4"
-                command1 += ['-vn', '-c:a', 'copy', audio_file]
-
-            command1 += [
+                '-vf', f'fps={fps},scale={width}:{height}',
                 '-f', 'ismv',
                 '-'
             ]
-            scale_factor = 0.75
-            print(f"Save audio file to {audio_file}")
+
             # break into init frames
             command2 = [
                 'ffmpeg',
-                '-hide_banner',
-                '-loglevel', 'error',
                 '-i', '-',  # Use input from the pipe
                 '-start_number', '0',
                 '-vsync', '0',
-                '-vf', f'scale=iw*{scale_factor}:ih*{scale_factor}',
                 f'{controlnet_img_dir}/%08d.png'
             ]
 
             # Run the first command and capture its output
             process1 = subprocess.Popen(command1, stdout=subprocess.PIPE)
+
             # Run the second command, using the output of the first as input
             subprocess.run(command2, stdin=process1.stdout)
+
             # Wait for the first process to finish
             process1.wait()
+            print("Preprocessing finished")
 
+            if loose>1:
+                print("Dropping frames")
+                self.leave_every_nth_png(loose, controlnet_img_dir)
             #copy to controlnet subfolders
             print("Copying frames")
             self.copy_dir_contents(controlnet_img_dir,f"{input_img_dir}/controlnet_openpose")
@@ -374,6 +392,7 @@ class Predictor(BasePredictor):
             clip_skip=clip_skip,
             controlnet_conditioning_scale=controlnet_conditioning_scale,
             loop="false",
+            detail=detail
         )
 
         print(f"{'-'*80}")
