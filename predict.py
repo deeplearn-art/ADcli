@@ -334,6 +334,7 @@ class Predictor(BasePredictor):
             if has_audio_stream:
                 print("Extracting audio")
                 command = ['ffmpeg', '-i', str(base_video), '-vn', '-c:a', 'copy', 'audio.mp4',]
+                audio_file = f"{output_dir}/audio.mp4"
                 subprocess.run(command)
 
             command1 = [
@@ -385,7 +386,7 @@ class Predictor(BasePredictor):
             prompt_fixed_ratio=prompt_fixed_ratio,
             head_prompt="",
             tail_prompt="",
-            negative_prompt=negative_prompt,
+            negative_prompt=f'{negative_prompt} easynegative',
             fps=fps,
             prompt_map=f'"0":"{prompt}"',
             scheduler=scheduler,
