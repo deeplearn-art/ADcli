@@ -333,8 +333,8 @@ class Predictor(BasePredictor):
 
             if has_audio_stream:
                 print("Extracting audio")
-                command = ['ffmpeg', '-i', str(base_video), '-vn', '-c:a', 'copy', 'audio.mp4',]
                 audio_file = f"{output_dir}/audio.mp4"
+                command = ['ffmpeg', '-i', str(base_video), '-vn', '-c:a', 'copy', audio_file]
                 subprocess.run(command)
 
             command1 = [
@@ -422,6 +422,7 @@ class Predictor(BasePredictor):
             str(frames_n),
             "-C",
             str(context),
+            "-x"
         ]
         print(f"Running command: {' '.join(cmd)}")
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1, universal_newlines=True)
