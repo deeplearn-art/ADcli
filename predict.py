@@ -214,11 +214,9 @@ class Predictor(BasePredictor):
         base_model: str = Input(
             default="darkSushiMixMix_colorful",
             choices=[
-                "realisticVisionV40_v20Novae",
-                "lyriel_v16",
-                "majicmixRealistic_v5Preview",
-                "rcnzCartoon3d_v10",
-                "toonyou_beta3",
+                "3RDEdNEWILLUSTRO_illustroV3",
+                "aingdiffusion_v13",
+                "animerge_v25",
                 "darkSushiMixMix_colorful",
                 "CUSTOM",
             ],
