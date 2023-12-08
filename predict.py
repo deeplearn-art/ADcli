@@ -46,6 +46,25 @@ CONFIG_JSON = """
   "lora_map": {{
     "share/lora/add_detail.safetensors": {detail}
   }},
+  "motion_lora_map": {{
+  }},
+  "ip_adapter_map": {{
+      "enable": {enable_ip_adapter},
+      "input_image_dir": "ip_adapter_image/xeno",
+      "prompt_fixed_ratio": 0.5,
+      "save_input_image": true,
+      "scale": 0.5,
+      "is_full_face": false,
+      "is_plus_face": false,
+      "is_plus": true,
+      "is_light": false
+  }},
+  "img2img_map": {{
+      "enable": {enable_img2img},
+      "init_img_dir": "data/controlnet_image/xeno",
+      "save_init_image": true,
+      "denoising_strength": 0.7
+  }},
   "controlnet_map": {{
     "input_image_dir": "controlnet_image/xeno",
     "max_samples_on_vram": 200,
@@ -287,7 +306,15 @@ class Predictor(BasePredictor):
             ge=0,
             le=1,
         ),
-        loose: int = Input(default=1)
+        loose: int = Input(default=1),
+        ip_adapter_img: CogPath = Input( default=None),
+        enable_img2img: str = Input(
+             default="false",
+             choices=[
+                "true",
+                "false"
+             ]
+        )
     ) -> CogPath:
         """
         Animate Diff Prompt Walking CLI w/ ControlNet (openpose)
@@ -309,7 +336,10 @@ class Predictor(BasePredictor):
         if width % 8 != 0:
             width =  width + (8-width) % 8
             print(f"width rounded to {width}")
-
+        enable_ip_adapter = "false"
+        if ip_adapter_img:
+            shutil.copy(ip_adapter_img, "data/ip_adapter_image/xeno")
+            enable_ip_adapter = "true"
         if base_video:
             input_img_dir = "data/controlnet_image/xeno"
             os.makedirs(input_img_dir,exist_ok=True)
@@ -391,7 +421,9 @@ class Predictor(BasePredictor):
             clip_skip=clip_skip,
             controlnet_conditioning_scale=controlnet_conditioning_scale,
             loop="false",
-            detail=detail
+            detail=detail,
+            enable_ip_adapter=enable_ip_adapter,
+            enable_img2img=enable_img2img
         )
 
         print(f"{'-'*80}")
