@@ -28,7 +28,6 @@ build:
     - "ninja>=1.11.0"
     - "numpy>=1.22.4"
     - "omegaconf>=2.3.0"
-    - "pillow>=9.4.0,<10.0.0"
     - "pydantic>=1.10.0,<2.0.0"
     - "rich>=13.0.0,<14.0.0"
     - "safetensors>=0.3.1"
@@ -50,10 +49,12 @@ build:
     - "groundingdino-py==0.4.0"
     - "gitpython"
     - "mediapipe"
-    - "git+https://github.com/deeplearn-art/animatediff-cli-prompt-travel.git@7aa83364f47a67d660e64a25d83c2204b6fda735"
+    - "git+https://github.com/deeplearn-art/animatediff-cli-prompt-travel.git@1432f951615626be74c690eccbc7f289fe064819"
   run:
     - pip install --upgrade pip
     - apt-get update && apt-get install -y ffmpeg
+    - apt-get install -y libtiff5-dev libjpeg8-dev libopenjp2-7-dev zlib1g-dev libfreetype6-dev liblcms2-dev libwebp-dev tcl8.6-dev tk8.6-dev python3-tk libharfbuzz-dev libfribidi-dev libxcb1-dev
+    - pip install pillow-simd
     - pip install imageio[ffmpeg]
     - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.0.3/pget" && chmod +x /usr/local/bin/pget
 
