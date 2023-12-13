@@ -49,7 +49,7 @@ build:
     - "groundingdino-py==0.4.0"
     - "gitpython"
     - "mediapipe"
-    - "git+https://github.com/deeplearn-art/animatediff-cli-prompt-travel.git@1432f951615626be74c690eccbc7f289fe064819"
+    - "git+https://github.com/deeplearn-art/animatediff-cli-prompt-travel.git@10ca0afd9bae5705fd32e39a2ccad44dda4c426d"
   run:
     - pip install --upgrade pip
     - apt-get update && apt-get install -y ffmpeg
