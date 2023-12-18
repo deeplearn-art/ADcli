@@ -73,7 +73,7 @@ CONFIG_JSON = """
     "preprocess_on_gpu": true,
     "is_loop": {loop},
     "controlnet_openpose": {{
-        "enable": true,
+        "enable": {enable_open_pose},
         "use_preprocessor": true,
         "guess_mode": false,
         "controlnet_conditioning_scale": {controlnet_conditioning_scale},
@@ -183,6 +183,12 @@ class Predictor(BasePredictor):
             shutil.rmtree(dest_dir)
         shutil.copytree(src_dir, dest_dir,dirs_exist_ok=True)
 
+    def empty_dir(self,dir):
+        if os.path.exists(dir):
+            shutil.rmtree(dir)
+        os.makedirs(dir)
+        print(f"Emptied {dir}")
+
     def leave_every_nth_png(self,n, dir):
         for filename in os.listdir(dir):
             file_path = os.path.join(dir, filename)
@@ -235,7 +241,6 @@ class Predictor(BasePredictor):
             choices=[
                 "3RDEdNEWILLUSTRO_illustroV3",
                 "aingdiffusion_v13",
-                "animerge_v25",
                 "darkSushiMixMix_colorful",
                 "CUSTOM",
             ],
@@ -320,12 +325,16 @@ class Predictor(BasePredictor):
         Animate Diff Prompt Walking CLI w/ ControlNet (openpose)
         # builds upon the work of neggle, s9roll7, zsxkib
         """
-
         output_dir = "output"
-        if os.path.exists(output_dir):  # Empty outputs
-            shutil.rmtree(output_dir)
-        os.makedirs(output_dir)
-
+        controlnet_img_base_dir = "data/controlnet_image/xeno"
+        controlnet_img_dir = "data/controlnet_image/xeno/img"
+        ip_adapter_img_dir= "data/ip_adapter_image/xeno"
+        self.empty_dir(output_dir)
+        self.empty_dir(controlnet_img_base_dir)
+        self.empty_dir(ip_adapter_img_dir)
+        os.makedirs(controlnet_img_dir)
+        enable_ip_adapter = "false"
+        enable_open_pose = "false"
         audio_file = None
         if seed is None or seed < 0:
             seed = -1
@@ -336,19 +345,8 @@ class Predictor(BasePredictor):
         if width % 8 != 0:
             width =  width + (8-width) % 8
             print(f"width rounded to {width}")
-        enable_ip_adapter = "false"
-        if ip_adapter_img:
-            shutil.copy(ip_adapter_img, "data/ip_adapter_image/xeno")
-            enable_ip_adapter = "true"
-        if base_video:
-            input_img_dir = "data/controlnet_image/xeno"
-            os.makedirs(input_img_dir,exist_ok=True)
-            print("Preparing base video")
-            controlnet_img_dir = f"{input_img_dir}/img"
-            if os.path.exists(controlnet_img_dir): # empty imgs dir
-                shutil.rmtree(controlnet_img_dir)
-            os.makedirs(controlnet_img_dir)
 
+        if base_video:
             print("Preprocessing ")
             result = subprocess.run( # Check if the input video has an audio stream
                 ["ffprobe", "-i", base_video, "-show_streams", "-select_streams", "a", "-loglevel", "error"],
@@ -398,7 +396,11 @@ class Predictor(BasePredictor):
                 self.leave_every_nth_png(loose, controlnet_img_dir)
             #copy to controlnet subfolders
             print("Copying frames")
-            self.copy_dir_contents(controlnet_img_dir,f"{input_img_dir}/controlnet_openpose")
+            self.copy_dir_contents(controlnet_img_dir,f"{controlnet_img_base_dir}/controlnet_openpose")
+            enable_open_pose = "true"
+            if ip_adapter_img:
+                shutil.copy(ip_adapter_img, ip_adapter_img_dir)
+                enable_ip_adapter = "true"
 
         if base_model.upper() == "CUSTOM":
             base_model = self.download_custom_model(custom_base_model_url)
@@ -423,7 +425,8 @@ class Predictor(BasePredictor):
             loop="false",
             detail=detail,
             enable_ip_adapter=enable_ip_adapter,
-            enable_img2img=enable_img2img
+            enable_img2img=enable_img2img,
+            enable_open_pose=enable_open_pose
         )
 
         print(f"{'-'*80}")
