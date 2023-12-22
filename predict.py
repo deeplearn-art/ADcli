@@ -240,7 +240,7 @@ class Predictor(BasePredictor):
             default="darkSushiMixMix_colorful",
             choices=[
                 "3RDEdNEWILLUSTRO_illustroV3",
-                "aingdiffusion_v13",
+                "flat2DAnimerge_v45Sharp",
                 "darkSushiMixMix_colorful",
                 "CUSTOM",
             ],
@@ -399,7 +399,7 @@ class Predictor(BasePredictor):
             self.copy_dir_contents(controlnet_img_dir,f"{controlnet_img_base_dir}/controlnet_openpose")
             enable_open_pose = "true"
             if ip_adapter_img:
-                shutil.copy(ip_adapter_img, ip_adapter_img_dir)
+                shutil.copy(ip_adapter_img, f"{ip_adapter_img_dir}/0000.png")
                 enable_ip_adapter = "true"
 
         if base_model.upper() == "CUSTOM":

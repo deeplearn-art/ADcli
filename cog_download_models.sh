@@ -8,9 +8,10 @@ mkdir -p data/share/lora/
 #wget -c https://civitai.com/api/download/models/71009 -O data/share/Stable-diffusion/rcnzCartoon3d_v10.safetensors || false
 #wget -c https://civitai.com/api/download/models/79068 -O data/share/Stable-diffusion/majicmixRealistic_v5Preview.safetensors || false
 #wget -c https://civitai.com/api/download/models/29460 -O data/share/Stable-diffusion/realisticVisionV40_v20Novae.safetensors || false
-wget -c https://civitai.com/api/download/models/34553 -O data/share/Stable-diffusion/aingdiffusion_v13.safetensors
+#wget -c https://civitai.com/api/download/models/34553 -O data/share/Stable-diffusion/aingdiffusion_v13.safetensors
 wget -c https://civitai.com/api/download/models/56071 -O data/share/Stable-diffusion/darkSushiMixMix_colorful.safetensors
 wget -c https://civitai.com/api/download/models/96101 -O data/share/Stable-diffusion/3RDEdNEWILLUSTRO_illustroV3.safetensors
+wget -c "https://civitai.com/api/download/models/266360?type=Model&format=SafeTensor&size=pruned&fp=fp16" -O data/share/Stable-diffusion/flat2DAnimerge_v45Sharp.safetensors
 #wget -c https://civitai.com/api/download/models/158852/ -O data/share/Stable-diffusion/fantasticHackerStyleBailing_v1029.safetensors
 #wget -c https://civitai.com/api/download/models/11193 -O data/share/Stable-diffusion/illuminatiDiffusionV1_v11.safetensors
 wget -c https://huggingface.co/stabilityai/sd-vae-ft-mse-original/resolve/main/vae-ft-mse-840000-ema-pruned.safetensors -P data/share/Stable-diffusion/
