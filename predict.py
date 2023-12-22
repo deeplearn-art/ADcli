@@ -55,8 +55,8 @@ CONFIG_JSON = """
       "save_input_image": true,
       "scale": 0.5,
       "is_full_face": false,
-      "is_plus_face": false,
-      "is_plus": true,
+      "is_plus_face": {is_plus_face},
+      "is_plus": {is_plus},
       "is_light": false
   }},
   "img2img_map": {{
@@ -313,6 +313,13 @@ class Predictor(BasePredictor):
         ),
         loose: int = Input(default=1),
         ip_adapter_img: CogPath = Input( default=None),
+        is_plus_face:  str = Input(
+             default="false",
+             choices=[
+                "true",
+                "false"
+             ]
+        ),
         enable_img2img: str = Input(
              default="false",
              choices=[
@@ -336,6 +343,7 @@ class Predictor(BasePredictor):
         enable_ip_adapter = "false"
         enable_open_pose = "false"
         audio_file = None
+        is_plus = "true" if is_plus_face=="false" else "false"
         if seed is None or seed < 0:
             seed = -1
 
@@ -398,7 +406,8 @@ class Predictor(BasePredictor):
             print("Copying frames")
             self.copy_dir_contents(controlnet_img_dir,f"{controlnet_img_base_dir}/controlnet_openpose")
             enable_open_pose = "true"
-            if ip_adapter_img:
+
+        if ip_adapter_img:
                 shutil.copy(ip_adapter_img, f"{ip_adapter_img_dir}/0000.png")
                 enable_ip_adapter = "true"
 
@@ -426,7 +435,9 @@ class Predictor(BasePredictor):
             detail=detail,
             enable_ip_adapter=enable_ip_adapter,
             enable_img2img=enable_img2img,
-            enable_open_pose=enable_open_pose
+            enable_open_pose=enable_open_pose,
+            is_plus_face=is_plus_face,
+            is_plus=is_plus,
         )
 
         print(f"{'-'*80}")
