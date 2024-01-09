@@ -22,8 +22,6 @@ CONFIG_JSON = """
 {{
   "name": "sample",
   "path": "{dreambooth_path}",
-  "apply_lcm_lora": {lcm_lora},
-  "lcm_lora_scale": 1.0,
   "motion_module": "models/motion-module/mm_sd_v15_v2.safetensors",
   "vae_path": "{vae_path}",
   "compile": false,
@@ -80,7 +78,16 @@ CONFIG_JSON = """
         "control_guidance_start": 0.0,
         "control_guidance_end": 1.0,
         "control_scale_list": []
-    }}
+    }},
+     "animatediff_controlnet": {{
+            "enable": {enable_animatediff_controlnet},
+            "use_preprocessor": true,
+            "guess_mode": false,
+            "controlnet_conditioning_scale": {controlnet_conditioning_scale},
+            "control_guidance_start": 0.0,
+            "control_guidance_end": 1.0,
+            "control_scale_list": []
+     }}
   }},
   "output":{{
     "format" : "{output_format}",
@@ -326,6 +333,13 @@ class Predictor(BasePredictor):
                 "true",
                 "false"
              ]
+        ),
+        enable_animatediff_controlnet: str = Input(
+             default="false",
+             choices=[
+                "true",
+                "false"
+             ]
         )
     ) -> CogPath:
         """
@@ -405,6 +419,8 @@ class Predictor(BasePredictor):
             #copy to controlnet subfolders
             print("Copying frames")
             self.copy_dir_contents(controlnet_img_dir,f"{controlnet_img_base_dir}/controlnet_openpose")
+            if enable_animatediff_controlnet:
+                self.copy_dir_contents(controlnet_img_dir,f"{controlnet_img_base_dir}/animatediff_controlnet")
             enable_open_pose = "true"
 
         if ip_adapter_img:
@@ -436,6 +452,7 @@ class Predictor(BasePredictor):
             enable_ip_adapter=enable_ip_adapter,
             enable_img2img=enable_img2img,
             enable_open_pose=enable_open_pose,
+            enable_animatediff_controlnet=enable_animatediff_controlnet,
             is_plus_face=is_plus_face,
             is_plus=is_plus,
         )
